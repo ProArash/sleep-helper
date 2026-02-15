@@ -1,36 +1,35 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 var targetProcesses = []string{"Discord.exe", "ts3client_win64.exe"}
 
 func main() {
-	isSvc, err := svc.IsWindowsService()
-	if err != nil {
-		log.Fatalf("failed to determine if running in service: %v", err)
-	}
+	// Optional: Hide console window by detaching from it
+	// hideConsole()
 
-	if isSvc {
-		runService("Win64")
-	} else {
-		runLoop()
-	}
+	log.Println("Process killer started. Running between 22:00 and 02:00")
+	runLoop()
 }
+
 func runLoop() {
 	for {
 		now := time.Now()
 		hour := now.Hour()
-		if hour >= 23 || hour < 2 {
+
+		// Check if current time is between 22:00 (10 PM) and 02:00 (2 AM)
+		if hour >= 22 || hour < 2 {
+			log.Printf("Active hours: %02d:%02d - checking for target processes", now.Hour(), now.Minute())
 			checkAndKillProcesses()
+		} else {
+			log.Printf("Outside active hours (%02d:%02d) - sleeping", now.Hour(), now.Minute())
 		}
+
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -50,7 +49,7 @@ func checkAndKillProcesses() {
 
 		for _, target := range targetProcesses {
 			if name == target {
-				fmt.Printf("Killing process: %s (PID %d)\n", name, proc.Pid)
+				log.Printf("Killing process: %s (PID %d)", name, proc.Pid)
 				err := proc.Kill()
 				if err != nil {
 					log.Printf("Failed to kill %s: %v", name, err)
@@ -60,14 +59,11 @@ func checkAndKillProcesses() {
 	}
 }
 
-func runService(name string) {
-	elog, err := eventlog.Open(name)
-	if err != nil {
-		return
-	}
-	defer elog.Close()
+// Optional function to hide console window
+func hideConsole() {
+	// This is a Windows-specific approach to hide the console
+	// Note: This may not work in all cases and requires syscall
+	// Alternative: Compile with -ldflags="-H windowsgui"
 
-	elog.Info(1, fmt.Sprintf("%s service started.", name))
-
-	runLoop() // Keep the loop running
+	// For a simpler approach, just use the compiler flag mentioned above
 }

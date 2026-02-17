@@ -1,73 +1,67 @@
 package main
 
-import (
-	"fmt"
-	"log"
-	"time"
-
-	"github.com/shirou/gopsutil/v4/process"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/eventlog"
-)
+import "fmt"
 
 var targetProcesses = []string{"Discord.exe", "ts3client_win64.exe"}
 
 func main() {
-	isSvc, err := svc.IsWindowsService()
-	if err != nil {
-		log.Fatalf("failed to determine if running in service: %v", err)
-	}
+	// isSvc, err := svc.IsWindowsService()
+	// if err != nil {
+	// 	log.Fatalf("failed to determine if running in service: %v", err)
+	// }
 
-	if isSvc {
-		runService("Win64")
-	} else {
-		runLoop()
-	}
-}
-func runLoop() {
-	for {
-		now := time.Now()
-		hour := now.Hour()
-		if hour >= 23 || hour < 2 {
-			checkAndKillProcesses()
-		}
-		time.Sleep(5 * time.Second)
-	}
+	// if isSvc {
+	// 	runService("Win64")
+	// } else {
+	// 	runLoop()
+	// }
+	fmt.Print("heuy")
 }
 
-func checkAndKillProcesses() {
-	procs, err := process.Processes()
-	if err != nil {
-		log.Printf("Error getting processes: %v", err)
-		return
-	}
+// func runLoop() {
+// 	for {
+// 		now := time.Now()
+// 		hour := now.Hour()
+// 		if hour >= 23 || hour < 2 {
+// 			checkAndKillProcesses()
+// 		}
+// 		time.Sleep(5 * time.Second)
+// 	}
+// }
 
-	for _, proc := range procs {
-		name, err := proc.Name()
-		if err != nil {
-			continue
-		}
+// func checkAndKillProcesses() {
+// 	procs, err := process.Processes()
+// 	if err != nil {
+// 		log.Printf("Error getting processes: %v", err)
+// 		return
+// 	}
 
-		for _, target := range targetProcesses {
-			if name == target {
-				fmt.Printf("Killing process: %s (PID %d)\n", name, proc.Pid)
-				err := proc.Kill()
-				if err != nil {
-					log.Printf("Failed to kill %s: %v", name, err)
-				}
-			}
-		}
-	}
-}
+// 	for _, proc := range procs {
+// 		name, err := proc.Name()
+// 		if err != nil {
+// 			continue
+// 		}
 
-func runService(name string) {
-	elog, err := eventlog.Open(name)
-	if err != nil {
-		return
-	}
-	defer elog.Close()
+// 		for _, target := range targetProcesses {
+// 			if name == target {
+// 				fmt.Printf("Killing process: %s (PID %d)\n", name, proc.Pid)
+// 				err := proc.Kill()
+// 				if err != nil {
+// 					log.Printf("Failed to kill %s: %v", name, err)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-	elog.Info(1, fmt.Sprintf("%s service started.", name))
+// func runService(name string) {
+// 	elog, err := eventlog.Open(name)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer elog.Close()
 
-	runLoop() // Keep the loop running
-}
+// 	elog.Info(1, fmt.Sprintf("%s service started.", name))
+
+// 	runLoop() // Keep the loop running
+// }

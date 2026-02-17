@@ -1,67 +1,61 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"os/exec"
+	"time"
+)
 
-var targetProcesses = []string{"Discord.exe", "ts3client_win64.exe"}
-
-func main() {
-	// isSvc, err := svc.IsWindowsService()
-	// if err != nil {
-	// 	log.Fatalf("failed to determine if running in service: %v", err)
-	// }
-
-	// if isSvc {
-	// 	runService("Win64")
-	// } else {
-	// 	runLoop()
-	// }
-	fmt.Print("heuy")
+// Default installation paths for Discord and TeamSpeak
+var apps = map[string]string{
+	"Discord": "C:\\Users\\%USERNAME%\\AppData\\Local\\Discord\\Discord.exe",
+	"TS3":     "C:\\Program Files\\TeamSpeak 3 Client\\ts3client_win64.exe",
 }
 
-// func runLoop() {
-// 	for {
-// 		now := time.Now()
-// 		hour := now.Hour()
-// 		if hour >= 23 || hour < 2 {
-// 			checkAndKillProcesses()
-// 		}
-// 		time.Sleep(5 * time.Second)
-// 	}
-// }
+// Block or unblock the app via Windows Firewall
+func setFirewall(appName, appPath string, block bool) {
+	// action := "block"
+	if !block {
+		// Delete the rule
+		cmd := exec.Command("cmd", "/C", `netsh advfirewall firewall delete rule name="Block `+appName+`"`)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Error removing firewall rule for %s: %v", appName, err)
+		} else {
+			log.Printf("Firewall rule removed for %s", appName)
+		}
+		return
+	}
 
-// func checkAndKillProcesses() {
-// 	procs, err := process.Processes()
-// 	if err != nil {
-// 		log.Printf("Error getting processes: %v", err)
-// 		return
-// 	}
+	// Add the block rule
+	cmd := exec.Command("cmd", "/C",
+		`netsh advfirewall firewall add rule name="Block `+appName+`" dir=out program="`+appPath+`" action=block`,
+	)
+	if err := cmd.Run(); err != nil {
+		log.Printf("Error adding firewall rule for %s: %v", appName, err)
+	} else {
+		log.Printf("Firewall rule added for %s", appName)
+	}
+}
 
-// 	for _, proc := range procs {
-// 		name, err := proc.Name()
-// 		if err != nil {
-// 			continue
-// 		}
+func main() {
+	log.Println("Firewall blocker started. Active hours: 22:00–02:00")
 
-// 		for _, target := range targetProcesses {
-// 			if name == target {
-// 				fmt.Printf("Killing process: %s (PID %d)\n", name, proc.Pid)
-// 				err := proc.Kill()
-// 				if err != nil {
-// 					log.Printf("Failed to kill %s: %v", name, err)
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+	for {
+		now := time.Now()
+		hour := now.Hour()
 
-// func runService(name string) {
-// 	elog, err := eventlog.Open(name)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer elog.Close()
+		if hour >= 22 || hour < 2 {
+			// Active hours — block apps
+			for name, path := range apps {
+				setFirewall(name, path, true)
+			}
+		} else {
+			// Outside active hours — unblock apps
+			for name, path := range apps {
+				setFirewall(name, path, false)
+			}
+		}
 
-// 	elog.Info(1, fmt.Sprintf("%s service started.", name))
-
-// 	runLoop() // Keep the loop running
-// }
+		time.Sleep(60 * time.Second) // check every minute
+	}
+}
